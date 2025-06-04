@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cẩm Nang Ngữ Pháp JLPT N4 Tương Tác</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: Tôi sẽ thiết kế ứng dụng theo cấu trúc dashboard với thanh điều hướng cố định ở trên cùng để chuyển đổi giữa các phần chính: (1) Tổng Quan: Giới thiệu chung và biểu đồ phân loại ngữ pháp. (2) Tra Cứu Ngữ Pháp: Một thư viện tương tác cho phép tìm kiếm, lọc và xem chi tiết 50+ mẫu ngữ pháp. (3) Các Thể Động Từ: Trình bày chi tiết cách chia và sử dụng các thể động từ quan trọng. (4) Kính Ngữ: Phần riêng biệt giải thích các cấp độ kính ngữ. (5) So Sánh: Các bảng so sánh trực quan những cặp ngữ pháp dễ nhầm lẫn. (6) Sơ Đồ Tư Duy: Một sơ đồ tương tác trực quan hóa toàn bộ kiến thức. Cấu trúc này không theo tuần tự của báo cáo gốc mà nhóm thông tin theo chức năng, giúp người dùng dễ dàng điều hướng và tập trung vào nội dung họ cần, tăng cường trải nghiệm học tập và tính khả dụng. -->
+    <!-- Visualization & Content Choices: (1) Biểu đồ phân loại: Dùng biểu đồ Donut của Chart.js để trực quan hóa sự phân bổ các mẫu ngữ pháp theo chức năng (mục đích, lý do, điều kiện, v.v.), giúp người dùng có cái nhìn tổng quan về tầm quan trọng của mỗi nhóm. (2) Thư viện ngữ pháp: Dùng thẻ (card) HTML/Tailwind có thể nhấn vào để xem chi tiết. Tương tác này (click-to-reveal) tốt hơn là hiển thị tất cả thông tin cùng lúc, tránh gây quá tải. Chức năng tìm kiếm và lọc bằng JS giúp truy cập nhanh. (3) Các bảng chia động từ và so sánh: Dùng bảng HTML/Tailwind để trình bày thông tin một cách có cấu trúc, dễ đối chiếu. (4) Sơ đồ tư duy: Xây dựng bằng các thẻ div và Flexbox, tạo thành một cây tương tác có thể nhấn vào, thay vì dùng ảnh tĩnh. Điều này cho phép người dùng khám phá các mối quan hệ giữa các khái niệm. Các lựa chọn này đều ưu tiên sự tương tác, rõ ràng và sử dụng Canvas/HTML/CSS, không dùng SVG/Mermaid. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .nav-active { color: #ffffff; background-color: #3b82f6; }
+        .nav-link { transition: all 0.2s ease-in-out; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .card { transition: all 0.3s ease-in-out; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        .modal-content { animation: slide-down 0.3s ease-out; }
+        @keyframes slide-down {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .mindmap-node { transition: all 0.2s ease; }
+        .mindmap-node:hover { background-color: #dbeafe; }
+        .chart-container { position: relative; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto; height: 320px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .gemini-btn {
+            background-color: #fbbf24; /* Amber 400 */
+            color: #78350f; /* Amber 900 */
+        }
+        .gemini-btn:hover {
+            background-color: #f59e0b; /* Amber 500 */
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="app" class="min-h-screen">
+        <header class="bg-white shadow-md sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-3">
+                <h1 class="text-2xl md:text-3xl font-bold text-blue-600">Cẩm Nang Ngữ Pháp JLPT N4</h1>
+                <p class="text-sm text-gray-500">Công cụ tra cứu, học và ôn tập tương tác (có hỗ trợ của Gemini AI ✨)</p>
+            </div>
+            <nav id="main-nav" class="bg-blue-500 text-white">
+                <div class="container mx-auto px-4">
+                    <div class="flex flex-wrap justify-center items-center">
+                        <a href="#overview" class="nav-link py-2 px-3 md:px-4 text-sm md:text-base font-semibold hover:bg-blue-600 nav-active">Tổng Quan</a>
+                        <a href="#lookup" class="nav-link py-2 px-3 md:px-4 text-sm md:text-base font-semibold hover:bg-blue-600">Tra Cứu</a>
+                        <a href="#verb-forms" class="nav-link py-2 px-3 md:px-4 text-sm md:text-base font-semibold hover:bg-blue-600">Thể Động Từ</a>
+                        <a href="#keigo" class="nav-link py-2 px-3 md:px-4 text-sm md:text-base font-semibold hover:bg-blue-600">Kính Ngữ</a>
+                        <a href="#comparison" class="nav-link py-2 px-3 md:px-4 text-sm md:text-base font-semibold hover:bg-blue-600">So Sánh</a>
+                        <a href="#mindmap" class="nav-link py-2 px-3 md:px-4 text-sm md:text-base font-semibold hover:bg-blue-600">Sơ Đồ Tư Duy</a>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto p-4 md:p-6">
+            <section id="overview" class="content-section active">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Chào mừng đến với Cẩm nang Ngữ pháp N4!</h2>
+                <div class="grid md:grid-cols-2 gap-6 items-center">
+                    <div class="prose max-w-none text-gray-600 bg-white p-6 rounded-lg shadow">
+                        <p>Ngữ pháp trình độ N4 là cầu nối quan trọng, đưa bạn từ sơ cấp lên nền tảng trung cấp. Ở cấp độ này, bạn sẽ không chỉ học các mẫu câu riêng lẻ mà còn cần hiểu sâu sắc về sắc thái ý nghĩa và cách vận dụng linh hoạt trong giao tiếp.</p>
+                        <p>Ứng dụng này được thiết kế để giúp bạn hệ thống hóa và chinh phục ngữ pháp N4 một cách trực quan, nay còn được hỗ trợ bởi Gemini AI để mang đến trải nghiệm học tập phong phú hơn. Bạn có thể:</p>
+                        <ul>
+                            <li><strong>Tra cứu nhanh:</strong> Tìm kiếm và lọc hơn 50 cấu trúc ngữ pháp cốt lõi.</li>
+                            <li><strong>✨ Học sâu hơn với Gemini:</strong> Nhận thêm các ví dụ minh họa đa dạng cho từng cấu trúc ngữ pháp, hoặc tạo câu với các dạng động từ vừa chia.</li>
+                            <li><strong>Hiểu rõ:</strong> Các thể động từ phức tạp và kính ngữ qua giải thích chi tiết.</li>
+                            <li><strong>So sánh:</strong> Phân biệt các mẫu câu dễ nhầm lẫn.</li>
+                            <li><strong>Tổng hợp:</strong> Khám phá Sơ đồ tư duy tương tác để thấy bức tranh toàn cảnh.</li>
+                        </ul>
+                        <p>Hãy bắt đầu hành trình chinh phục N4 của bạn ngay bây giờ!</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-semibold mb-3 text-center text-gray-700">Phân loại các điểm Ngữ pháp N4</h3>
+                         <p class="text-center text-sm text-gray-500 mb-4">Biểu đồ này thể hiện sự phân bổ các cấu trúc ngữ pháp theo chức năng giao tiếp chính, giúp bạn nhận biết các mảng kiến thức trọng tâm.</p>
+                        <div class="chart-container">
+                            <canvas id="grammarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="lookup" class="content-section">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Tra cứu Ngữ pháp N4</h2>
+                <p class="mb-6 text-gray-600">Sử dụng thanh tìm kiếm để tra cứu nhanh hoặc bộ lọc để khám phá các cấu trúc theo chức năng. Nhấn vào một mẫu ngữ pháp để xem chi tiết cách dùng, ví dụ, và nhận thêm ví dụ từ Gemini AI.</p>
+                <div class="flex flex-col md:flex-row gap-4 mb-6 sticky top-[108px] bg-gray-50 py-4 z-40">
+                    <input type="text" id="searchInput" placeholder="Tìm kiếm ngữ pháp (ví dụ: ために, そうです...)" class="w-full md:w-2/3 p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <select id="categoryFilter" class="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Tất cả các chức năng</option>
+                    </select>
+                </div>
+                <div id="grammarGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                </div>
+                <p id="noResults" class="text-center text-gray-500 hidden mt-8">Không tìm thấy kết quả phù hợp.</p>
+            </section>
+
+            <section id="verb-forms" class="content-section">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Các Thể Động từ Trọng tâm</h2>
+                <p class="mb-6 text-gray-600">N4 là bước tiến quan trọng trong việc nắm vững các thể động từ phức tạp. Phần này sẽ giải thích chi tiết cách chia, ý nghĩa và cách vận dụng của các thể động từ xương sống trong tiếng Nhật.</p>
+                 <div id="verbConjugationTool" class="bg-blue-50 p-6 rounded-lg shadow mb-6">
+                    <h3 class="text-xl font-semibold mb-3 text-blue-800">Công cụ chia động từ</h3>
+                    <p class="text-blue-700 mb-4 text-sm">Thực hành nhanh cách chia động từ. Nhập động từ thể ます và chọn thể bạn muốn chia. Sau đó, bạn có thể nhờ Gemini đặt câu với dạng vừa chia!</p>
+                    <div class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="w-full sm:w-1/3">
+                            <label for="verbInput" class="block text-sm font-medium text-gray-700">Động từ (thể ます)</label>
+                            <input type="text" id="verbInput" placeholder="VD: 書きます, 食べます" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div class="w-full sm:w-1/3">
+                            <label for="formSelect" class="block text-sm font-medium text-gray-700">Chọn thể</label>
+                            <select id="formSelect" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white">
+                                <option value="kanoukei">Thể Khả năng</option>
+                                <option value="ikoukei">Thể Ý chí</option>
+                                <option value="meireikei">Thể Mệnh lệnh</option>
+                                <option value="kinshikei">Thể Cấm đoán</option>
+                                <option value="ukemikei">Thể Bị động</option>
+                                <option value="shiekikei">Thể Sai khiến</option>
+                            </select>
+                        </div>
+                         <button id="conjugateBtn" class="w-full sm:w-auto bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Chia động từ</button>
+                    </div>
+                    <div id="conjugationResultContainer" class="mt-4">
+                        <div id="conjugationResult" class="p-4 bg-white rounded-md border border-blue-200 text-lg font-semibold text-blue-700 h-14 flex items-center justify-center"></div>
+                        <button id="geminiVerbSentenceBtn" class="mt-2 w-full sm:w-auto gemini-btn font-semibold py-2 px-4 rounded-md hidden">✨ Gemini, đặt câu với dạng này!</button>
+                        <div id="geminiVerbSentenceResult" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800"></div>
+                        <div id="geminiVerbLoading" class="loader hidden"></div>
+                    </div>
+                </div>
+                <div id="verb-forms-content" class="space-y-4"></div>
+            </section>
+
+            <section id="keigo" class="content-section">
+                 <h2 class="text-2xl font-bold mb-4 text-gray-700">Kính ngữ (敬語 – Keigo)</h2>
+                 <p class="mb-6 text-gray-600">Kính ngữ là một phần không thể thiếu, thể hiện sự tôn trọng trong giao tiếp. N4 là bước đầu làm quen với Tôn Kính Ngữ (nâng người khác lên) và Khiêm Nhường Ngữ (hạ mình xuống).</p>
+                 <div id="keigo-content" class="grid md:grid-cols-1 lg:grid-cols-2 gap-6"></div>
+            </section>
+
+            <section id="comparison" class="content-section">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">So sánh các cấu trúc dễ nhầm lẫn</h2>
+                <p class="mb-6 text-gray-600">Hiểu rõ sự khác biệt giữa các mẫu ngữ pháp tương tự là chìa khoá để sử dụng chính xác. Chọn một cặp cấu trúc để xem so sánh chi tiết về ý nghĩa và cách dùng.</p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button class="comparison-btn bg-white border border-blue-500 text-blue-500 py-2 px-4 rounded-full text-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400" data-comparison="conditionals">と vs たら vs ば vs なら</button>
+                    <button class="comparison-btn bg-white border border-green-500 text-green-500 py-2 px-4 rounded-full text-sm hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-400" data-comparison="purpose">ように vs ために</button>
+                    <button class="comparison-btn bg-white border border-purple-500 text-purple-500 py-2 px-4 rounded-full text-sm hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-400" data-comparison="guess">そうです vs ようです</button>
+                     <button class="comparison-btn bg-white border border-red-500 text-red-500 py-2 px-4 rounded-full text-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400" data-comparison="state">～ている vs ～てある</button>
+                    <button class="comparison-btn bg-white border border-yellow-500 text-yellow-500 py-2 px-4 rounded-full text-sm hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400" data-comparison="intention">つもり vs 予定</button>
+                </div>
+                <div id="comparison-content" class="bg-white p-6 rounded-lg shadow-md min-h-[300px]">
+                </div>
+            </section>
+
+            <section id="mindmap" class="content-section">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">Sơ đồ Tư duy Ngữ pháp N4</h2>
+                <p class="mb-6 text-gray-600">Khám phá "bức tranh lớn" của ngữ pháp N4 qua sơ đồ tư duy tương tác này. Nhấn vào một nút để khám phá các nhánh con. Nhấn vào một mẫu ngữ pháp cụ thể để nhảy đến phần tra cứu chi tiết.</p>
+                <div id="mindmap-container" class="bg-white p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto">
+                    <div class="flex justify-center items-center min-w-max">
+                        <div class="bg-blue-600 text-white font-bold p-4 rounded-xl shadow-lg">NGỮ PHÁP N4</div>
+                        <div class="w-10 sm:w-20 h-1 bg-gray-300"></div>
+                        <div class="flex flex-col space-y-4">
+                            <div class="flex items-center">
+                                <div class="bg-red-500 text-white p-3 rounded-lg mindmap-node">CÁC THỂ ĐỘNG TỪ</div>
+                                <div class="w-5 sm:w-10 h-1 bg-gray-300"></div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="bg-red-100 text-red-800 p-2 text-sm rounded mindmap-node">Thể Khả Năng</div>
+                                    <div class="bg-red-100 text-red-800 p-2 text-sm rounded mindmap-node">Thể Ý Chí</div>
+                                    <div class="bg-red-100 text-red-800 p-2 text-sm rounded mindmap-node">Thể Bị Động</div>
+                                    <div class="bg-red-100 text-red-800 p-2 text-sm rounded mindmap-node">Thể Sai Khiến</div>
+                                    <div class="bg-red-100 text-red-800 p-2 text-sm rounded mindmap-node">Thể Mệnh Lệnh</div>
+                                    <div class="bg-red-100 text-red-800 p-2 text-sm rounded mindmap-node">Thể Cấm Đoán</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="bg-green-500 text-white p-3 rounded-lg mindmap-node">MẪU CÂU CHỨC NĂNG</div>
+                                <div class="w-5 sm:w-10 h-1 bg-gray-300"></div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <a href="#lookup" data-filter="Điều kiện" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Điều kiện</a>
+                                    <a href="#lookup" data-filter="Lý do" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Lý do</a>
+                                    <a href="#lookup" data-filter="Mục đích" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Mục đích</a>
+                                    <a href="#lookup" data-filter="Cho/Nhận" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Cho/Nhận</a>
+                                    <a href="#lookup" data-filter="Suy đoán" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Suy đoán</a>
+                                    <a href="#lookup" data-filter="Lời khuyên" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Lời khuyên</a>
+                                    <a href="#lookup" data-filter="Thời gian" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Thời gian</a>
+                                    <a href="#lookup" data-filter="Dễ/Khó" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Dễ/Khó</a>
+                                    <a href="#lookup" data-filter="Ý định" class="mindmap-jump bg-green-100 text-green-800 p-2 text-sm rounded mindmap-node">Ý định</a>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="bg-purple-500 text-white p-3 rounded-lg mindmap-node">KÍNH NGỮ</div>
+                                 <div class="w-5 sm:w-10 h-1 bg-gray-300"></div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div class="bg-purple-100 text-purple-800 p-2 text-sm rounded mindmap-node">Tôn Kính Ngữ</div>
+                                    <div class="bg-purple-100 text-purple-800 p-2 text-sm rounded mindmap-node">Khiêm Nhường Ngữ</div>
+                                     <div class="bg-purple-100 text-purple-800 p-2 text-sm rounded mindmap-node">Thể Lịch Sự</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="bg-yellow-500 text-white p-3 rounded-lg mindmap-node">CẤU TRÚC ĐẶC BIỆT</div>
+                                <div class="w-5 sm:w-10 h-1 bg-gray-300"></div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <a href="#lookup" data-search="～てしまう" class="mindmap-jump bg-yellow-100 text-yellow-800 p-2 text-sm rounded mindmap-node">～てしまう</a>
+                                    <a href="#lookup" data-search="～ておく" class="mindmap-jump bg-yellow-100 text-yellow-800 p-2 text-sm rounded mindmap-node">～ておく</a>
+                                    <a href="#lookup" data-search="～てある" class="mindmap-jump bg-yellow-100 text-yellow-800 p-2 text-sm rounded mindmap-node">～てある</a>
+                                    <a href="#lookup" data-search="～すぎる" class="mindmap-jump bg-yellow-100 text-yellow-800 p-2 text-sm rounded mindmap-node">～すぎる</a>
+                                    <a href="#lookup" data-search="～ながら" class="mindmap-jump bg-yellow-100 text-yellow-800 p-2 text-sm rounded mindmap-node">～ながら</a>
+                                    <a href="#lookup" data-search="～はず" class="mindmap-jump bg-yellow-100 text-yellow-800 p-2 text-sm rounded mindmap-node">～はずです</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center py-6 text-gray-500 text-sm mt-8">
+            <p>Được thiết kế để hỗ trợ việc học tiếng Nhật của bạn.</p>
+            <p>&copy; 2024 Cẩm Nang Ngữ Pháp N4 Tương Tác.</p>
+        </footer>
+    </div>
+
+    <div id="grammarModal" class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 hidden">
+        <div id="modalContentContainer" class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+             <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const GEMINI_API_KEY = "AIzaSyCm-xS33rq3e3QUzaVrenb6mhDSw3dXAGg"; // API Key for Gemini
+            const GEMINI_API_URL_FLASH = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+            const grammarData = [
+                { id: 1, name: "～んです / ～のです", category: "Lý do", meaning: "Dùng để giải thích nguyên nhân, lý do; xác nhận thông tin; hỏi thông tin một cách mềm mỏng.", formula: "V/Aい/Aな(な)/N(な) + んです", examples: ["A: どうして 遅れたんですか。<br>B: バスが 来なかったんです。", "A: いいカメラですね。どこで 買ったんですか。<br>B: 日本で 買いました。"], notes: "「～のです」 trang trọng hơn." },
+                { id: 2, name: "～んですが、～", category: "Nhờ vả", meaning: "Mở đầu một lời nhờ vả, xin lời khuyên, hoặc đưa ra thông tin nền.", formula: "V/Aい/Aな(な)/N(な) + んですが、～", examples: ["日本語で 手紙を 書いたんですが、見て いただけませんか。", "頭が痛いんですが、薬を飲んでもいいですか。"], notes: "Làm câu nói trở nên mềm mại, lịch sự." },
+                { id: 3, name: "～し、～し", category: "Lý do", meaning: "Liệt kê nhiều hơn một lý do, đặc điểm.", formula: "V/Aい/Aな(だ)/N(だ) + し", examples: ["このレストランは料理もおいしいし、値段も安いし、人気があります。", "田中さんは頭がいいし、親切だし、それにハンサムです。"], notes: "Ngụ ý còn có những lý do/đặc điểm khác." },
+                { id: 4, name: "～によると～そうです", category: "Trích dẫn", meaning: "Truyền đạt lại thông tin nghe được từ một nguồn nào đó.", formula: "N + によると + Thể thường + そうです", examples: ["天気予報によると、明日は晴れるそうです。", "彼の話によれば、この茶碗は高価な骨董品だそうだ。"], notes: "Phân biệt với ～そうです (trông có vẻ)." },
+                { id: 5, name: "～そうです (trông có vẻ)", category: "Suy đoán", meaning: "Suy đoán dựa trên quan sát trực quan.", formula: "V(bỏ ます)/Aい(bỏ い)/Aな(bỏ な) + そうです", examples: ["このケーキはおいしそうです。", "雨が降りそうです。"], notes: "Đặc biệt: いい→よさそう. Khi bổ nghĩa cho danh từ: ～そうな + N." },
+                { id: 6, name: "～てみる", category: "Hành động", meaning: "Thử làm gì đó để xem kết quả, có kinh nghiệm.", formula: "Vて + みる", examples: ["馬刺しを食べてみたい。", "この服を着てみてもいいですか。"], notes: "Chia như động từ nhóm II." },
+                { id: 7, name: "～しか～ない", category: "Giới hạn", meaning: "Chỉ ~ (mà thôi). Luôn đi với thể phủ định.", formula: "N + しか + Vない", examples: ["私は ひらがなしか 書けません。", "こんなことは友達にしか話せません。"], notes: "Nhấn mạnh hơn 「だけ」." },
+                { id: 8, name: "～たがる", category: "Mong muốn", meaning: "Diễn tả mong muốn của người thứ ba.", formula: "V(bỏ ます) + たがる/たがっている", examples: ["子供はなんでも知りたがる。", "妹は新しいパソコンを買いたがっています。"], notes: "Không dùng cho mong muốn của bản thân (dùng ～たい)." },
+                { id: 9, name: "～かもしれない", category: "Suy đoán", meaning: "Có lẽ là, có thể là (mức độ chắc chắn thấp, ~50%).", formula: "Thể thường + かもしれない", examples: ["雨が降るかもしれない。", "私が間違っているかもしれません。"], notes: "Ít chắc chắn hơn 「～でしょう」." },
+                { id: 10, name: "～でしょう / ～だろう", category: "Suy đoán", meaning: "Có lẽ là, chắc là (mức độ chắc chắn cao hơn ～かもしれない).", formula: "Thể thường + でしょう/だろう", examples: ["明日天気がいいでしょう。", "6時までに彼は帰ってくるでしょう。"], notes: "「だろう」 là thể thông thường của 「でしょう」." },
+                { id: 11, name: "～ておく (～とく)", category: "Hành động", meaning: "Làm gì đó sẵn trước để chuẩn bị.", formula: "Vて + おく", examples: ["日本へ行く前に日本語を習っておくつもりです。", "そこに置いておいて下さい。"], notes: "Trong văn nói thường rút gọn thành 「～とく」." },
+                { id: 12, name: "～ようです", category: "Suy đoán", meaning: "Có vẻ như, hình như (dựa trên cảm nhận chủ quan, gián tiếp).", formula: "Thể thường + ようです", examples: ["雪が降ったようです。", "隣の部屋に誰かいるようです。"], notes: "Khác với 「そうです」(quan sát trực tiếp) và 「らしいです」(nghe nói)." },
+                { id: 13, name: "～つもりです", category: "Ý định", meaning: "Dự định làm/không làm gì đó (ý định chắc chắn).", formula: "Vる/Vない + つもりです", examples: ["来月いえを買うつもりです。", "タバコは、もうすわないつもりです。"], notes: "Nhấn mạnh quyết định của bản thân." },
+                { id: 14, name: "～予定です", category: "Ý định", meaning: "Dự định là, theo kế hoạch là (thường khách quan).", formula: "Vる/Nの + 予定です", examples: ["来月日本へ出張するよていです。", "会議は午後2時から始まる予定です。"], notes: "Mang tính lịch trình, kế hoạch đã được ấn định." },
+                { id: 15, name: "～てあげる", category: "Cho/Nhận", meaning: "Làm gì đó cho ai (người ngang hàng, dưới).", formula: "Vて + あげる", examples: ["妹に写真を撮ってあげました。", "友達に日本語を教えてあげました。"], notes: "Không dùng cho người trên." },
+                { id: 16, name: "～てくれる", category: "Cho/Nhận", meaning: "Ai đó làm gì cho mình (hoặc người nhà mình).", formula: "Vて + くれる", examples: ["鈴木さんは自転車を修理してくれました。", "先生が推薦状を書いてくれました。"], notes: "Thể hiện sự biết ơn." },
+                { id: 17, name: "～てもらう", category: "Cho/Nhận", meaning: "Được ai đó làm gì cho mình.", formula: "Vて + もらう", examples: ["私は日本人の友達に漢字を教えてもらった。", "母にセーターを編んでもらいました。"], notes: "Nhấn mạnh mình là người nhận được lợi ích." },
+                { id: 18, name: "～ていただけませんか", category: "Nhờ vả", meaning: "Nhờ vả, yêu cầu ai đó làm gì (rất lịch sự).", formula: "Vて + いただけませんか", examples: ["日本語を教えていただけませんか。", "この荷物を持っていただけませんか。"], notes: "Lịch sự nhất trong các mẫu nhờ vả." },
+                { id: 19, name: "～なさい", category: "Mệnh lệnh", meaning: "Hãy làm V đi (mệnh lệnh nhẹ nhàng, người trên nói với người dưới).", formula: "V(bỏ ます) + なさい", examples: ["早く寝なさい。", "勉強しなさい。"], notes: "Nhẹ nhàng hơn thể mệnh lệnh (～ろ/～ろ)." },
+                { id: 20, name: "～ても", category: "Điều kiện", meaning: "Cho dù... thì cũng..., Dù... vẫn...", formula: "Vても/Aくても/Aなでも/Nでも", examples: ["高くても買いたいです。", "雨が降っても、試合は行われます。"], notes: "Diễn tả sự việc không thay đổi bất chấp điều kiện." },
+                { id: 21, name: "～てしまう", category: "Hành động", meaning: "Hoàn thành/Lỡ làm gì đó (tiếc nuối).", formula: "Vて + しまう", examples: ["この宿題をしてしまったら、遊びにいける。", "電車の中にかさを忘れて来てしまった。"], notes: "Văn nói: ～ちゃう/～じゃう." },
+                { id: 22, name: "～ながら", category: "Thời gian", meaning: "Vừa... vừa... (hai hành động đồng thời).", formula: "V(bỏ ます) + ながら", examples: ["音楽を聴きながら勉強する。", "母は鼻歌を歌いながら夕飯の用意をしている。"], notes: "Hành động sau là hành động chính." },
+                { id: 23, name: "～のに (mục đích)", category: "Mục đích", meaning: "Để..., Cho (việc)..., Dùng cho...", formula: "Vる + のに", examples: ["この道具はパイプを切るのに使います。", "彼を説得するのには時間が必要です。"], notes: "Phân biệt với のに (mặc dù)." },
+                { id: 24, name: "～はずです", category: "Suy đoán", meaning: "Chắc chắn là..., nhất định là (dựa trên căn cứ).", formula: "Thể thường + はずです", examples: ["来るはずですよ。さっき電話がありましたから。", "ちゃんと鞄に入れたはずなのに、財布がない。"], notes: "Mức độ tin tưởng cao." },
+                { id: 25, name: "～はずがない", category: "Suy đoán", meaning: "Không thể nào mà..., làm gì có chuyện...", formula: "Thể thường + はずがない", examples: ["あの温厚な人がそんなひどいことをするはずがない。", "そんなはずがない。さっき机の上に置いたんだから。"], notes: "Phủ định mạnh mẽ." },
+                { id: 26, name: "～ずに", category: "Phủ định", meaning: "Không làm V1 mà làm V2.", formula: "V(bỏ ない) + ずに", examples: ["宿題を持たずに、学校へ行ってしまった。", "彼は何も言わずに部屋を出て行った。"], notes: "Trang trọng hơn 「～ないで」. Đặc biệt: しない→せずに." },
+                { id: 27, name: "～ないで", category: "Phủ định", meaning: "(Làm V2) mà không làm V1 / Xin đừng làm V.", formula: "Vない + で", examples: ["朝ごはんを食べないで学校へ行きます。", "ここでタバコを吸わないでください。"], notes: "Phân biệt với 「～なくて」(chỉ nguyên nhân)." },
+                { id: 28, name: "～かどうか", category: "Nghi vấn", meaning: "(Liệu) có ~ hay không.", formula: "Thể thường + かどうか", examples: ["あの人が来るかどうか知っていますか。", "その映画は面白いかどうかは見てみなければ分からない。"], notes: "Lồng câu hỏi có/không vào câu khác." },
+                { id: 29, name: "～というN", category: "Giải thích", meaning: "N mà tên là..., N có nội dung là...", formula: "Thể thường/N1 + という + N2", examples: ["田中さんという人から電話がありましたよ。", "弟が大学に合格したという知らせを受け取った。"], notes: "Dùng để định nghĩa, giải thích, trích dẫn." },
+                { id: 30, name: "～やすい", category: "Dễ/Khó", meaning: "Dễ làm V.", formula: "V(bỏ ます) + やすい", examples: ["このペンはとても書きやすい。", "かたかなの「シ」と「ツ」は間違えやすい。"], notes: "Chia như tính từ đuôi い." },
+                { id: 31, name: "～にくい", category: "Dễ/Khó", meaning: "Khó làm V.", formula: "V(bỏ ます) + にくい", examples: ["漢字は書きにくいです。", "この薬は苦くて飲みにくいです。"], notes: "Chia như tính từ đuôi い." },
+                { id: 32, name: "～てある", category: "Trạng thái", meaning: "Trạng thái là kết quả của một hành động có chủ ý.", formula: "Vて (tha động từ) + ある", examples: ["机の上に本が置いてあります。", "窓が開けてあるのは空気を入れ替えるためだ。"], notes: "Khác với 「Vている」(trạng thái tự nhiên)." },
+                { id: 33, name: "～間に/～間", category: "Thời gian", meaning: "間に (hành động xen vào), 間 (hành động kéo dài song song).", formula: "Vる/Vている/Nの + 間に/間", examples: ["留守の間に友達が訪問しました。", "夏休みの間、ずっと田舎にいました。"], notes: "Chú ý sự khác biệt về thời gian của hành động ở vế sau." },
+                { id: 34, name: "～く/にする", category: "Hành động", meaning: "Làm cho (cái gì đó) trở nên ~.", formula: "Aい(bỏ い)→くする / Aな(bỏ な)→にする / N→にする", examples: ["部屋をきれいにしました。", "音を小さくする。"], notes: "Thể hiện sự thay đổi trạng thái do tác động." },
+                { id: 35, name: "～てほしい", category: "Mong muốn", meaning: "Muốn ai đó làm (hoặc không làm) gì đó.", formula: "(人に) + Vて + ほしい", examples: ["両親には、いつまでも元気で長生きしてほしい。", "この仕事を手伝ってほしいです。"], notes: "Diễn tả mong muốn của mình đối với hành động của người khác." },
+                { id: 36, name: "～たところ", category: "Thời gian", meaning: "Sau khi làm V thì (phát hiện ra...); Vừa mới làm V xong.", formula: "Vた + ところ", examples: ["教室に行ってみたところが、学生は一人も来ていなかった。", "たったいまバスが出たところです。"], notes: "Phân biệt với Vる/Vているところ." },
+                { id: 37, name: "～ことにする", category: "Ý định", meaning: "Tôi quyết định sẽ làm/không làm V.", formula: "Vる/Vない + ことにする", examples: ["明日からジョギングすることにしよう。", "これからはあまり甘い物は食べないことにします。"], notes: "Nhấn mạnh quyết định chủ quan tại thời điểm nói." },
+                { id: 38, name: "～ことになっている", category: "Quy định", meaning: "Được quy định là..., theo kế hoạch là...", formula: "Vる/Vない + ことになっている", examples: ["休むときは学校に連絡しなければならないことになっています。", "明日は先生に訪問することになっています。"], notes: "Diễn tả quy tắc, lịch trình khách quan." },
+                { id: 39, name: "～とおりに", category: "Hành động", meaning: "Làm V2 theo đúng như V1/N.", formula: "Vる/Vた/Nの + とおりに; N + どおりに", examples: ["説明書のとおりに、組み立てました。", "計画どおりに進んでいます。"], notes: "Thực hiện theo một khuôn mẫu, chỉ dẫn." },
+                { id: 40, name: "～ところに/へ", category: "Thời gian", meaning: "Đúng vào lúc đang làm V thì có việc khác xen vào.", formula: "Vる/Vている/Vた + ところに/へ", examples: ["出かけようとしたところに雨が降りました。", "勉強しているところへ友達が遊びに来た。"], notes: "Nhấn mạnh sự trùng hợp về thời điểm." },
+                { id: 41, name: "～もの / ～もん", category: "Lý do", meaning: "Vì... (đưa ra lý do, biện minh, mang sắc thái nũng nịu).", formula: "Thể thường + もの/もん", examples: ["だってお腹が痛いんだもの。", "雪が降ったんだもの。行けるわけないでしょう。"], notes: "Thường dùng bởi phụ nữ và trẻ em." },
+                { id: 42, name: "～ものか", category: "Phủ định", meaning: "Tuyệt đối không..., làm gì có chuyện...", formula: "Thể thường + ものか/もんか", examples: ["あんな人に、頼むもんか。", "二度と行くものか。"], notes: "Thể hiện sự phủ định mạnh mẽ, cảm thán." },
+                { id: 43, name: "～ものなら", category: "Điều kiện", meaning: "Nếu có thể ~ thì... (điều khó xảy ra).", formula: "V(khả năng) + ものなら", examples: ["母の病気が治るものなら、どんな高価な薬でも手に入れたい。", "できるものなら、もう一度あの頃に戻りたい。"], notes: "Thường đi kèm mong muốn mạnh mẽ." },
+                { id: 44, "name": "～ものの", "category": "Tương phản", "meaning": "Mặc dù... nhưng mà...", "formula": "Thể thường + ものの", "examples": ["新しい登山靴を買ったものの、忙しくてまだ一度も山へ行っていない。", "免許は持っているものの、ほとんど運転したことがない。"], "notes": "Vế sau là kết quả trái ngược, không như mong đợi." },
+                { id: 45, name: "～ように (mục đích)", category: "Mục đích", meaning: "Để cho..., sao cho...", formula: "Vる/Vない/V(khả năng) + ように", examples: ["子供にも読めるように名前にふりがなをつけた。", "忘れないようにノートにメモしておこう。"], notes: "Động từ trước ように thường là thể khả năng, thể ない hoặc động từ chỉ trạng thái." },
+                { id: 46, name: "～ために", category: "Mục đích", meaning: "Để..., vì (lợi ích của)...", formula: "Vる/Nの + ために", examples: ["家を買うために朝から晩まで働く。", "健康のためにたくさん野菜を食べます。"], notes: "Động từ trước ために thường là động từ có chủ ý." },
+                { id: 47, name: "～場合は", category: "Điều kiện", meaning: "Trong trường hợp..., khi...", formula: "Thể thường/Nの + 場合は/場合に", examples: ["雨天の場合は順延します。", "パスポートをなくした場合は、すぐに大使館に連絡してください。"], notes: "Đưa ra tình huống giả định và cách xử lý." },
+                { id: 48, name: "～ほうがいい", category: "Lời khuyên", meaning: "Nên/Không nên làm gì thì tốt hơn.", formula: "Vた/Vない + ほうがいい", examples: ["医者に行ったほうがいい。", "あまり無理をしないほうがいいと思う。"], notes: "Dùng để đưa ra lời khuyên, gợi ý." },
+                { id: 49, name: "～すぎる", category: "Mức độ", meaning: "(Làm gì đó/Tính chất gì đó) quá mức.", formula: "V(bỏ ます)/Aい(bỏ い)/Aな(bỏ な) + すぎる", examples: ["夕べ刺身をたべすぎました。", "このシャツは大きすぎます。"], notes: "Thường mang ý nghĩa tiêu cực." },
+                { id: 50, name: "N1は～が、N2は～", category: "So sánh", meaning: "N1 thì..., nhưng N2 thì... (đối lập).", formula: "N1 は ～が、N2 は ～", examples: ["ひらがなは書けますが、漢字は 書けません。", "テニスは できますが、スキーは できません。"], notes: "Trợ từ は nhấn mạnh sự đối lập." }
+            ];
+
+            const categories = [...new Set(grammarData.map(item => item.category))];
+            
+            const contentSections = document.querySelectorAll('.content-section');
+            const navLinks = document.querySelectorAll('#main-nav a');
+            const searchInput = document.getElementById('searchInput');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const grammarGrid = document.getElementById('grammarGrid');
+            const noResults = document.getElementById('noResults');
+            const modal = document.getElementById('grammarModal');
+            const modalContentEl = document.getElementById('modalContent');
+            const comparisonBtns = document.querySelectorAll('.comparison-btn');
+            const comparisonContent = document.getElementById('comparison-content');
+            const mindmapJumps = document.querySelectorAll('.mindmap-jump');
+            const geminiVerbSentenceBtn = document.getElementById('geminiVerbSentenceBtn');
+            const geminiVerbSentenceResult = document.getElementById('geminiVerbSentenceResult');
+            const conjugationResultDiv = document.getElementById('conjugationResult');
+            const geminiVerbLoading = document.getElementById('geminiVerbLoading');
+
+
+            async function callGeminiAPI(promptText) {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: promptText }] }]
+                };
+                try {
+                    const response = await fetch(GEMINI_API_URL_FLASH, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error("Gemini API Error:", errorData);
+                        return `Lỗi API: ${errorData.error?.message || response.statusText}. Vui lòng kiểm tra API Key và thử lại.`;
+                    }
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        console.error("Unexpected Gemini API response structure:", result);
+                        return "Không nhận được phản hồi hợp lệ từ Gemini.";
+                    }
+                } catch (error) {
+                    console.error("Error calling Gemini API:", error);
+                    return "Đã xảy ra lỗi khi kết nối tới Gemini. Vui lòng thử lại sau.";
+                }
+            }
+
+            function navigate(hash) {
+                contentSections.forEach(section => {
+                    if ('#' + section.id === hash) {
+                        section.classList.add('active');
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.add('nav-active');
+                    } else {
+                        link.classList.remove('nav-active');
+                    }
+                });
+                window.scrollTo(0,0);
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const hash = e.target.getAttribute('href');
+                    history.pushState(null, null, hash);
+                    navigate(hash);
+                });
+            });
+
+            window.addEventListener('popstate', () => {
+                navigate(location.hash || '#overview');
+            });
+
+            function populateCategories() {
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    categoryFilter.appendChild(option);
+                });
+            }
+
+            function renderGrammarGrid(filterData) {
+                grammarGrid.innerHTML = '';
+                if (filterData.length === 0) {
+                    noResults.classList.remove('hidden');
+                    return;
+                }
+                noResults.classList.add('hidden');
+                
+                filterData.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card bg-white p-4 rounded-lg shadow-md border border-gray-200 cursor-pointer';
+                    card.innerHTML = `
+                        <h3 class="font-bold text-blue-600 text-lg">${item.name}</h3>
+                        <p class="text-sm text-gray-500">${item.meaning.substring(0, 70)}...</p>
+                    `;
+                    card.addEventListener('click', () => showModal(item));
+                    grammarGrid.appendChild(card);
+                });
+            }
+
+            function filterAndRender() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const selectedCategory = categoryFilter.value;
+
+                const filteredData = grammarData.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchTerm) || item.meaning.toLowerCase().includes(searchTerm);
+                    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+                    return matchesSearch && matchesCategory;
+                });
+                renderGrammarGrid(filteredData);
+            }
+
+            function showModal(item) {
+                modalContentEl.innerHTML = `
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-blue-700">${item.name}</h2>
+                                <span class="text-sm bg-blue-100 text-blue-800 font-medium mr-2 px-2.5 py-0.5 rounded">${item.category}</span>
+                            </div>
+                            <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-700">Ý nghĩa:</h4>
+                                <p class="text-gray-600">${item.meaning}</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-700">Công thức:</h4>
+                                <p class="text-gray-600 bg-gray-100 p-2 rounded font-mono">${item.formula}</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-700">Ví dụ:</h4>
+                                <div class="space-y-2 text-gray-600 pl-4 border-l-4 border-blue-200">
+                                    ${item.examples.map(ex => `<p>${ex}</p>`).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-700">Lưu ý:</h4>
+                                <p class="text-gray-600">${item.notes}</p>
+                            </div>
+                            <hr class="my-4">
+                            <div>
+                                <button id="geminiGrammarExamplesBtn" data-grammar-name="${item.name}" class="w-full gemini-btn font-semibold py-2 px-4 rounded-md">✨ Tạo thêm ví dụ với Gemini</button>
+                                <div id="geminiGrammarLoading" class="loader hidden mt-2"></div>
+                                <div id="geminiGrammarExamplesResult" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                document.getElementById('closeModal').addEventListener('click', closeModal);
+                
+                const geminiBtn = document.getElementById('geminiGrammarExamplesBtn');
+                geminiBtn.addEventListener('click', handleGeminiGrammarExamples);
+            }
+            
+            async function handleGeminiGrammarExamples(event) {
+                const grammarName = event.target.dataset.grammarName;
+                const resultDiv = document.getElementById('geminiGrammarExamplesResult');
+                const loadingDiv = document.getElementById('geminiGrammarLoading');
+                const button = event.target;
+
+                resultDiv.innerHTML = '';
+                loadingDiv.classList.remove('hidden');
+                button.disabled = true;
+                button.textContent = 'Đang tạo ví dụ...';
+
+                const prompt = `Bạn là một giáo viên tiếng Nhật chuyên nghiệp. Hãy tạo 3 câu ví dụ hoàn toàn mới sử dụng cấu trúc ngữ pháp N4 sau: "${grammarName}".
+Các ví dụ phải:
+1. Phù hợp với trình độ N4.
+2. Rõ ràng, dễ hiểu.
+3. Khác biệt so với các ví dụ thường gặp trong sách giáo khoa.
+4. Với mỗi ví dụ, cung cấp câu tiếng Nhật trước, sau đó là bản dịch tiếng Việt trên một dòng mới, cách nhau bởi dấu xuống dòng. Ví dụ:
+   明日、早く起きなければなりません。
+   Dịch: Ngày mai, tôi phải dậy sớm.
+
+Vui lòng chỉ trả lời bằng các câu ví dụ, không thêm lời chào hay giải thích gì khác. Mỗi cặp câu (Nhật-Việt) cách nhau bằng hai dấu xuống dòng.`;
+
+                const geminiResponse = await callGeminiAPI(prompt);
+                loadingDiv.classList.add('hidden');
+                button.disabled = false;
+                button.textContent = '✨ Tạo thêm ví dụ với Gemini';
+                
+                if (geminiResponse.startsWith("Lỗi API") || geminiResponse.startsWith("Không nhận được") || geminiResponse.startsWith("Đã xảy ra lỗi")) {
+                     resultDiv.innerHTML = `<p class="text-red-600">${geminiResponse}</p>`;
+                } else {
+                    const examples = geminiResponse.split('\n\n').map(exPair => {
+                        const lines = exPair.split('\n');
+                        if (lines.length >= 2) {
+                            return `<div class="mb-2"><p class="font-semibold">${lines[0]}</p><p>${lines.slice(1).join('<br>')}</p></div>`;
+                        }
+                        return `<p>${exPair.replace(/\n/g, '<br>')}</p>`; // Fallback for unexpected format
+                    }).join('');
+                    resultDiv.innerHTML = `<h5 class="font-semibold text-gray-700 mb-2">✨ Ví dụ từ Gemini:</h5>${examples}`;
+                }
+            }
+
+
+            function closeModal() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+
+            modal.addEventListener('click', (e) => {
+                if (e.target.id === 'grammarModal') { // Check if click is on the backdrop
+                    closeModal();
+                }
+            });
+
+
+            searchInput.addEventListener('input', filterAndRender);
+            categoryFilter.addEventListener('change', filterAndRender);
+
+            mindmapJumps.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigate('#lookup');
+                    const filter = e.target.dataset.filter;
+                    const search = e.target.dataset.search;
+
+                    if(filter){
+                        categoryFilter.value = filter;
+                        searchInput.value = '';
+                    }
+                    if(search){
+                        searchInput.value = search;
+                        categoryFilter.value = 'all';
+                    }
+                    filterAndRender();
+                    
+                    document.getElementById('lookup').scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+
+            function renderComparison(type) {
+                let content = '';
+                switch (type) {
+                    case 'conditionals':
+                        content = `
+                            <h3 class="text-xl font-bold mb-4">So sánh các câu điều kiện: と, たら, ば, なら</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3">Dạng</th>
+                                            <th scope="col" class="px-6 py-3">Ý nghĩa/Sắc thái</th>
+                                            <th scope="col" class="px-6 py-3">Lưu ý</th>
+                                            <th scope="col" class="px-6 py-3">Ví dụ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="bg-white border-b">
+                                            <td class="px-6 py-4 font-medium">～と</td>
+                                            <td class="px-6 py-4">Hễ A thì B (kết quả tất yếu, tự nhiên)</td>
+                                            <td class="px-6 py-4">Vế sau thường không phải ý chí, mệnh lệnh</td>
+                                            <td class="px-6 py-4">春になると、桜が咲きます。</td>
+                                        </tr>
+                                        <tr class="bg-gray-50 border-b">
+                                            <td class="px-6 py-4 font-medium">～たら</td>
+                                            <td class="px-6 py-4">Nếu A thì B / Sau khi A thì B (phổ biến nhất)</td>
+                                            <td class="px-6 py-4">Vế sau có thể là ý chí, mệnh lệnh. Rất linh hoạt.</td>
+                                            <td class="px-6 py-4">お金があったら、旅行したいです。</td>
+                                        </tr>
+                                        <tr class="bg-white border-b">
+                                            <td class="px-6 py-4 font-medium">～ば</td>
+                                            <td class="px-6 py-4">Nếu A (là điều kiện cần) thì B</td>
+                                            <td class="px-6 py-4">Thường dùng cho điều kiện chung. Chủ ngữ 2 vế giống nhau thì ít dùng.</td>
+                                            <td class="px-6 py-4">時間があれば、映画を見ます。</td>
+                                        </tr>
+                                        <tr class="bg-gray-50">
+                                            <td class="px-6 py-4 font-medium">～なら</td>
+                                            <td class="px-6 py-4">Nếu là N thì... (đưa ra lời khuyên)</td>
+                                            <td class="px-6 py-4">Nhận thông tin từ người nói/ngữ cảnh làm tiền đề.</td>
+                                            <td class="px-6 py-4">東京へ行くなら、秋がいいですよ。</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                        break;
+                    case 'purpose':
+                        content = `<h3 class="text-xl font-bold mb-4">So sánh mục đích: ように vs ために</h3>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-green-700">～ように</h4>
+                                    <p><strong>Dùng khi:</strong> Động từ phía trước là thể khả năng, thể ない hoặc động từ chỉ trạng thái (わかる, 見える...).</p>
+                                    <p><strong>Mục đích:</strong> Hướng tới một trạng thái, kết quả.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 日本語が上手になるように、毎日勉強しています。</p>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-blue-700">～ために</h4>
+                                    <p><strong>Dùng khi:</strong> Động từ phía trước là động từ có chủ ý.</p>
+                                    <p><strong>Mục đích:</strong> Hướng tới một hành động, sự việc cụ thể.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 家を買うために、貯金しています。</p>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    case 'guess':
+                         content = `<h3 class="text-xl font-bold mb-4">So sánh suy đoán: そうです vs ようです</h3>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-purple-700">～そうです</h4>
+                                    <p><strong>Căn cứ:</strong> Quan sát trực tiếp bằng thị giác.</p>
+                                    <p><strong>Sắc thái:</strong> "Trông có vẻ...". Phán đoán về vẻ bề ngoài.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> このケーキはおいしそうです。(Nhìn cái bánh và phán đoán)</p>
+                                </div>
+                                <div class="bg-yellow-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-yellow-700">～ようです</h4>
+                                    <p><strong>Căn cứ:</strong> Tổng hợp thông tin từ nhiều giác quan (nghe, nhìn, cảm nhận) hoặc suy luận logic.</p>
+                                    <p><strong>Sắc thái:</strong> "Hình như...", "Có vẻ như...".</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 隣の部屋は電気がついているから、誰かいるようです。(Thấy đèn sáng nên suy luận)</p>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    case 'state':
+                        content = `<h3 class="text-xl font-bold mb-4">So sánh trạng thái: ～ている vs ～てある</h3>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="bg-red-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-red-700">～ている</h4>
+                                    <p><strong>Động từ:</strong> Thường là TỰ động từ.</p>
+                                    <p><strong>Sắc thái:</strong> Mô tả một trạng thái tự nhiên của sự vật, không có chủ ý của con người.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 窓が開いています。(Cửa sổ đang mở - chỉ đơn giản mô tả trạng thái)</p>
+                                </div>
+                                <div class="bg-indigo-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-indigo-700">～てある</h4>
+                                    <p><strong>Động từ:</strong> Luôn là THA động từ.</p>
+                                    <p><strong>Sắc thái:</strong> Trạng thái là kết quả của một hành động có chủ đích, có mục đích.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 窓が開けてあります。(Cửa sổ được mở sẵn - ai đó đã mở với mục đích, VD: để thoáng khí)</p>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    case 'intention':
+                        content = `<h3 class="text-xl font-bold mb-4">So sánh ý định: つもり vs 予定</h3>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="bg-pink-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-pink-700">～つもり</h4>
+                                    <p><strong>Sắc thái:</strong> Ý định mang tính cá nhân, chủ quan và chắc chắn. Là quyết định của người nói.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 来年、日本へ留学するつもりです。(Tôi đã quyết định sẽ đi du học)</p>
+                                </div>
+                                <div class="bg-cyan-50 p-4 rounded-lg">
+                                    <h4 class="font-bold text-cyan-700">～予定</h4>
+                                    <p><strong>Sắc thái:</strong> Kế hoạch, lịch trình đã được sắp xếp, mang tính khách quan hơn. Có thể không hoàn toàn do ý muốn của người nói.</p>
+                                    <p class="mt-2 p-2 bg-white rounded"><strong>Ví dụ:</strong> 来週、大阪へ出張する予定です。(Theo lịch công ty, tôi sẽ đi công tác)</p>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    default:
+                        content = `<p class="text-center text-gray-500">Vui lòng chọn một cặp ngữ pháp để so sánh.</p>`;
+                }
+                comparisonContent.innerHTML = content;
+            }
+
+            comparisonBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    renderComparison(e.target.dataset.comparison);
+                });
+            });
+            renderComparison('');
+
+            function renderChart() {
+                const ctx = document.getElementById('grammarChart').getContext('2d');
+                const categoryCounts = grammarData.reduce((acc, item) => {
+                    acc[item.category] = (acc[item.category] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const chartData = {
+                    labels: Object.keys(categoryCounts),
+                    datasets: [{
+                        label: 'Số lượng mẫu ngữ pháp',
+                        data: Object.values(categoryCounts),
+                        backgroundColor: [
+                            '#3b82f6', '#10b981', '#8b5cf6', '#ef4444',
+                            '#f97316', '#f59e0b', '#ec4899', '#6366f1',
+                            '#06b6d4', '#d946ef'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                };
+
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    font: {
+                                       family: "'Be Vietnam Pro', sans-serif"
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                 bodyFont: {
+                                    family: "'Be Vietnam Pro', sans-serif"
+                                 },
+                                 titleFont: {
+                                     family: "'Be Vietnam Pro', sans-serif"
+                                 }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function renderVerbForms() {
+                const verbFormsData = [
+                    { title: 'Thể Khả Năng (可能形)', meaning: 'Diễn tả năng lực hoặc tính khả thi.', rules: ['Nhóm I: cột い → える (書きます→書ける)', 'Nhóm II: Vます → Vられる (食べます→食べられる)', 'Nhóm III: します→できる, 来ます→来られる'], example: '「私は日本語が話せます。」' },
+                    { title: 'Thể Ý Chí (意向形)', meaning: 'Diễn tả ý định, rủ rê.', rules: ['Nhóm I: cột う → おう (行きます→行こう)', 'Nhóm II: Vます → Vよう (見ます→見よう)', 'Nhóm III: します→しよう, 来ます→来よう'], example: '「週末、映画を見に行こう。」' },
+                    { title: 'Thể Bị Động (受身形)', meaning: 'Bị hoặc được ai đó làm gì.', rules: ['Nhóm I: cột い → あれる (叱ります→叱られる)', 'Nhóm II: Vます → Vられる (褒めます→褒められる)', 'Nhóm III: します→される, 来ます→来られる'], example: '「私は先生に褒められました。」' },
+                    { title: 'Thể Sai Khiến (使役形)', meaning: 'Bắt hoặc cho phép ai đó làm gì.', rules: ['Nhóm I: cột い → あせる (書きます→書かせる)', 'Nhóm II: Vます → Vさせる (食べます→食べさせる)', 'Nhóm III: します→させる, 来ます→来させる'], example: '「母は子供に野菜を食べさせます。」' },
+                    { title: 'Thể Mệnh Lệnh (命令形)', meaning: 'Ra lệnh một cách mạnh mẽ.', rules: ['Nhóm I: cột い → え (急ぎます→急げ)', 'Nhóm II: Vます → Vろ (食べます→食べろ)', 'Nhóm III: します→しろ, 来ます→来い'], example: '「逃げろ！」 (Dùng trong tình huống khẩn cấp)' },
+                    { title: 'Thể Cấm Đoán (禁止形)', meaning: 'Cấm làm gì đó.', rules: ['Vる + な (Tất cả các nhóm)'], example: '「ここに車を止めるな。」' }
+                ];
+                
+                const container = document.getElementById('verb-forms-content');
+                container.innerHTML = verbFormsData.map(form => `
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                        <h3 class="text-xl font-bold text-blue-700">${form.title}</h3>
+                        <p class="text-gray-600 my-2">${form.meaning}</p>
+                        <div class="mt-3">
+                            <h4 class="font-semibold">Cách chia:</h4>
+                            <ul class="list-disc list-inside text-gray-600 text-sm space-y-1 mt-1">
+                                ${form.rules.map(rule => `<li>${rule}</li>`).join('')}
+                            </ul>
+                        </div>
+                         <p class="mt-3 bg-gray-100 p-2 rounded text-gray-800"><strong>Ví dụ:</strong> ${form.example}</p>
+                    </div>
+                `).join('');
+            }
+
+            function renderKeigo() {
+                 const keigoData = [
+                    {
+                        type: 'Tôn Kính Ngữ (尊敬語)',
+                        desc: 'Dùng để nói về hành động của người khác (người trên, khách hàng...), thể hiện sự tôn trọng bằng cách "nâng" họ lên.',
+                        methods: [
+                            'Dùng thể bị động: 「社長はもう帰られました。」',
+                            'お + V(bỏ ます) + になります: 「先生は何時ごろお帰りになりますか。」',
+                            'Động từ đặc biệt: 「召し上がる」(ăn, uống), 「いらっしゃる」(đi, đến, ở), 「ご覧になる」(xem), 「おっしゃる」(nói), 「なさる」(làm).'
+                        ],
+                        color: 'purple'
+                    },
+                    {
+                        type: 'Khiêm Nhường Ngữ (謙譲語)',
+                        desc: 'Dùng để nói về hành động của bản thân, thể hiện sự khiêm tốn bằng cách "hạ mình xuống", qua đó gián tiếp tôn trọng đối phương.',
+                        methods: [
+                            'お + V(bỏ ます) + します: 「私がお荷物をお持ちします。」',
+                            'ご + N + します: 「後でこちらからご連絡します。」',
+                            'Động từ đặc biệt: 「参る」(đi, đến), 「申す」(nói), 「いただく」(nhận, ăn, uống), 「拝見する」(xem), 「伺う」(thăm, hỏi).'
+                        ],
+                        color: 'teal'
+                    }
+                ];
+
+                const container = document.getElementById('keigo-content');
+                container.innerHTML = keigoData.map(k => `
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-${k.color}-500">
+                        <h3 class="text-xl font-bold text-${k.color}-700">${k.type}</h3>
+                        <p class="text-gray-600 my-2">${k.desc}</p>
+                        <div class="mt-3">
+                             <h4 class="font-semibold text-gray-700">Các cách dùng chính:</h4>
+                            <ul class="list-disc list-inside text-gray-600 text-sm space-y-2 mt-1">
+                               ${k.methods.map(m => `<li>${m}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            function conjugateVerb() {
+                const input = document.getElementById('verbInput').value.trim();
+                const form = document.getElementById('formSelect').value;
+                
+                geminiVerbSentenceBtn.classList.add('hidden');
+                geminiVerbSentenceResult.innerHTML = '';
+
+                if (!input.endsWith('ます')) {
+                    conjugationResultDiv.textContent = 'Vui lòng nhập động từ thể ます.';
+                    return;
+                }
+                
+                let verb = input.slice(0, -2);
+                let stem = verb.slice(-1);
+                let group;
+
+                const group1Endings = ['い', 'き', 'ぎ', 'し', 'ち', 'に', 'び', 'み', 'り'];
+                const group2Special = ['起(お)き', '見(み)', '浴(あ)び', '降(お)り', '居(い)', '着(き)', '信(しん)じ', '感(かん)じ', '借(か)り', '足(た)り'];
+
+                if (verb === '来(き)') group = 3; // き special case for 来ます
+                else if (verb === 'し') group = 3; // し for します
+                else if (group2Special.some(s => verb === s || verb.startsWith(s.slice(0,1)) && s.includes('(') && verb.endsWith(s.slice(s.indexOf(')')+1))  ) || ['え', 'け', 'せ', 'て', 'ね', 'へ', 'め', 'れ'].includes(stem) && stem !== 'り' ) { // Check for two-kanji verbs or specific endings
+                     if (verb.length > 1 && ['え', 'け', 'せ', 'て', 'ね', 'へ', 'め', 'れ'].includes(verb[verb.length-2]) && group1Endings.includes(stem) ){ // e.g. 変えます (kaemasu)
+                        group = 2;
+                     } else if (group1Endings.includes(stem)) { // e.g. 見ます (mimasu)
+                        group = 2;
+                     } else {
+                        group = 2; // Default for え sound before ます if not group 1
+                     }
+                } else if (group1Endings.includes(stem)) {
+                    group = 1;
+                } else { // Default to group 2 if not clearly group 1 or 3
+                    group = 2; 
+                }
+
+
+                let result = '';
+                const u_vowels = { 'い': 'う', 'き': 'く', 'ぎ': 'ぐ', 'し': 'す', 'ち': 'つ', 'に': 'ぬ', 'び': 'ぶ', 'み': 'む', 'り': 'る' };
+                const e_vowels = { 'い': 'え', 'き': 'け', 'ぎ': 'げ', 'し': 'せ', 'ち': 'て', 'に': 'ね', 'び': 'べ', 'み': 'め', 'り': 'れ' };
+                const o_vowels = { 'い': 'お', 'き': 'こ', 'ぎ': 'ご', 'し': 'そ', 'ち': 'と', 'に': 'の', 'び': 'ぼ', 'み': 'も', 'り': 'ろ' };
+                const a_vowels = { 'い': 'わ', 'き': 'か', 'ぎ': 'が', 'し': 'さ', 'ち': 'た', 'に': 'な', 'び': 'ば', 'み': 'ま', 'り': 'ら' };
+
+                switch (form) {
+                    case 'kanoukei': 
+                        if(group === 1) result = verb.slice(0, -1) + e_vowels[stem] + 'る';
+                        else if(group === 2) result = verb + 'られる';
+                        else result = (verb === 'し') ? 'できる' : '来(こ)られる';
+                        break;
+                    case 'ikoukei': 
+                        if(group === 1) result = verb.slice(0, -1) + o_vowels[stem] + 'う';
+                        else if(group === 2) result = verb + 'よう';
+                        else result = (verb === 'し') ? 'しよう' : '来(こ)よう';
+                        break;
+                    case 'meireikei': 
+                        if(group === 1) result = verb.slice(0, -1) + e_vowels[stem];
+                        else if(group === 2) result = verb + 'ろ';
+                        else result = (verb === 'し') ? 'しろ' : '来(こ)い';
+                        break;
+                    case 'kinshikei': 
+                        let rootForm;
+                        if(verb === '来(き)') rootForm = '来(く)る';
+                        else if(verb === 'し') rootForm = 'する';
+                        else if(group === 1) rootForm = verb.slice(0, -1) + u_vowels[stem];
+                        else if(group === 2) rootForm = verb + 'る';
+                        result = rootForm + 'な';
+                        break;
+                     case 'ukemikei': 
+                        if(group === 1) result = verb.slice(0, -1) + a_vowels[stem] + 'れる';
+                        else if(group === 2) result = verb + 'られる';
+                        else result = (verb === 'し') ? 'される' : '来(こ)られる';
+                        break;
+                    case 'shiekikei': 
+                        if(group === 1) result = verb.slice(0, -1) + a_vowels[stem] + 'せる';
+                        else if(group === 2) result = verb + 'させる';
+                        else result = (verb === 'し') ? 'させる' : '来(こ)させる';
+                        break;
+                }
+
+                conjugationResultDiv.textContent = result;
+                if (result && !result.includes('Vui lòng')) {
+                    geminiVerbSentenceBtn.classList.remove('hidden');
+                    geminiVerbSentenceBtn.dataset.conjugatedVerb = result;
+                }
+            }
+
+            document.getElementById('conjugateBtn').addEventListener('click', conjugateVerb);
+
+            geminiVerbSentenceBtn.addEventListener('click', async (event) => {
+                const conjugatedVerb = event.target.dataset.conjugatedVerb;
+                geminiVerbSentenceResult.innerHTML = '';
+                geminiVerbLoading.classList.remove('hidden');
+                event.target.disabled = true;
+                event.target.textContent = 'Đang tạo câu...';
+
+                const prompt = `Bạn là một giáo viên tiếng Nhật chuyên nghiệp. Hãy tạo một câu ví dụ sử dụng dạng động từ sau: "${conjugatedVerb}".
+Câu ví dụ phải:
+1. Phù hợp với trình độ N4.
+2. Rõ ràng, dễ hiểu.
+3. Sử dụng chính xác dạng động từ đã cho.
+4. Cung cấp câu tiếng Nhật trước, sau đó là bản dịch tiếng Việt trên một dòng mới. Ví dụ:
+   書けます。
+   Dịch: Tôi có thể viết.
+
+Vui lòng chỉ trả lời bằng câu ví dụ, không thêm lời chào hay giải thích gì khác.`;
+                
+                const geminiResponse = await callGeminiAPI(prompt);
+                geminiVerbLoading.classList.add('hidden');
+                event.target.disabled = false;
+                event.target.textContent = '✨ Gemini, đặt câu với dạng này!';
+
+                if (geminiResponse.startsWith("Lỗi API") || geminiResponse.startsWith("Không nhận được") || geminiResponse.startsWith("Đã xảy ra lỗi")) {
+                     geminiVerbSentenceResult.innerHTML = `<p class="text-red-600">${geminiResponse}</p>`;
+                } else {
+                    const lines = geminiResponse.split('\n');
+                     if (lines.length >= 2) {
+                        geminiVerbSentenceResult.innerHTML = `<p class="font-semibold">${lines[0]}</p><p>${lines.slice(1).join('<br>')}</p>`;
+                    } else {
+                        geminiVerbSentenceResult.innerHTML = `<p>${geminiResponse.replace(/\n/g, '<br>')}</p>`; // Fallback
+                    }
+                }
+            });
+
+
+            navigate(location.hash || '#overview');
+            populateCategories();
+            renderGrammarGrid(grammarData);
+            renderChart();
+            renderVerbForms();
+            renderKeigo();
+        });
+    </script>
+</body>
+</html>
